@@ -1,0 +1,41 @@
+name: Vercel Production Deployment
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js 18.x
+      uses: pnpm/action-setup@v2
+      with:
+          version: 6.0.2     
+    - run: pnpm install
+    - run: pnpm run build 
+    - run: |
+        touch .env.test
+        echo NEXT_PUBLIC_POKEMON_ENDPOINT_GRAPHQL=${{ vars.NEXT_PUBLIC_POKEMON_ENDPOINT_GRAPHQL }} >> .env.test        
+        pnpm test
+  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.2
+      - run: |
+          touch .env
+          echo NEXT_PUBLIC_POKEMON_ENDPOINT_GRAPHQL=${{ vars.NEXT_PUBLIC_POKEMON_ENDPOINT_GRAPHQL }} >> .env        
+      - run: pnpm install 
+      - run: pnpm vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - run: pnpm vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - run: pnpm vercel deploy --prod --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+
